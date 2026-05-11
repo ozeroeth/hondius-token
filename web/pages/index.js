@@ -181,7 +181,7 @@ export default function Home() {
       <header className={`fixed ${burnerAddress ? 'top-8' : 'top-0'} left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-[#1a1a1a]`}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/hondius-icon.png" alt="hondius" className="w-7 h-7 rounded-full" />
+            <img src="/hondius-icon.png" alt="HONDIUS mascot" className="w-6 h-6" style={{borderRadius: '50%', objectFit: 'cover'}} />
             <div className="flex flex-col">
               <span className="font-mono font-bold text-text-primary text-lg">&#9670; hondius</span>
               <span className="font-mono text-xs text-muted hidden sm:block">sign once, chatgpt mints</span>
@@ -205,7 +205,7 @@ export default function Home() {
         <section className="max-w-6xl mx-auto px-4 py-20 sm:py-32">
           {/* Mascot image */}
           <div className="flex justify-center mb-8">
-            <img src="/hondius-icon.png" alt="HONDIUS mascot" className="w-[120px] h-[120px] rounded-full border-2 border-muted" />
+            <img src="/hondius-icon.png" alt="HONDIUS mascot" className="w-[120px] h-[120px] border-2 border-muted" style={{borderRadius: '50%', objectFit: 'cover'}} />
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-text-primary leading-tight">
@@ -476,7 +476,7 @@ export default function Home() {
           <p className="text-sm text-muted mb-2">// 05 tokenomics</p>
           <h2 className="text-2xl sm:text-3xl font-bold text-text-primary mb-10">
             <span className="inline-flex items-center gap-2">
-              <img src="/hondius-icon.png" alt="" className="w-4 h-4 rounded-full inline" />
+              <img src="/hondius-icon.png" alt="" className="w-4 h-4 inline" style={{borderRadius: '50%', objectFit: 'cover'}} />
               $HONDIUS
             </span>{' '}
             fair launch. no bullshit.
