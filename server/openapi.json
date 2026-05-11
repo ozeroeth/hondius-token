@@ -1,0 +1,259 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "HONDIUS Minter API",
+    "description": "Relayer API for the HONDIUS memecoin on Base network. Allows checking mint status, wallet info, and broadcasting mint transactions.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://hondius-api.example.com",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Health check",
+        "description": "Returns server status and current timestamp.",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "example": 1700000000000
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/status": {
+      "get": {
+        "operationId": "getMintStatus",
+        "summary": "Get mint status",
+        "description": "Returns total slots claimed, ETH collected, and remaining public mint supply.",
+        "responses": {
+          "200": {
+            "description": "Current mint status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalSlotsClaimed": {
+                      "type": "integer",
+                      "description": "Total number of mint slots claimed",
+                      "example": 42
+                    },
+                    "ethCollected": {
+                      "type": "string",
+                      "description": "Total ETH collected from mints",
+                      "example": "0.042"
+                    },
+                    "publicMintRemaining": {
+                      "type": "string",
+                      "description": "Remaining tokens available for public mint",
+                      "example": "31740000000.0"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wallet/{address}": {
+      "get": {
+        "operationId": "getWalletInfo",
+        "summary": "Get wallet info",
+        "description": "Returns slots used, slots remaining, and token balance for a given wallet address.",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "description": "Ethereum wallet address",
+            "schema": {
+              "type": "string",
+              "example": "0xd3007607d24Ef0a79F9513b41bE293b6CDBb161f"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wallet information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "type": "string",
+                      "example": "0xd3007607d24Ef0a79F9513b41bE293b6CDBb161f"
+                    },
+                    "slotsUsed": {
+                      "type": "integer",
+                      "description": "Number of mint slots used by this wallet",
+                      "example": 2
+                    },
+                    "slotsRemaining": {
+                      "type": "integer",
+                      "description": "Number of mint slots remaining for this wallet",
+                      "example": 8
+                    },
+                    "tokenBalance": {
+                      "type": "string",
+                      "description": "HONDIUS token balance",
+                      "example": "1380000000.0"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid address",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mint": {
+      "post": {
+        "operationId": "mintTokens",
+        "summary": "Mint HONDIUS tokens",
+        "description": "Broadcasts a mint transaction via the relayer. The relayer wallet pays gas, and the mint price (slots * 0.001 ETH) is sent as msg.value.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["address", "slots"],
+                "properties": {
+                  "address": {
+                    "type": "string",
+                    "description": "Wallet address to mint for",
+                    "example": "0xd3007607d24Ef0a79F9513b41bE293b6CDBb161f"
+                  },
+                  "slots": {
+                    "type": "integer",
+                    "description": "Number of slots to mint (1-10)",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mint transaction broadcast successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "txHash": {
+                      "type": "string",
+                      "description": "Transaction hash on Base",
+                      "example": "0xabc123..."
+                    },
+                    "slots": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "address": {
+                      "type": "string",
+                      "example": "0xd3007607d24Ef0a79F9513b41bE293b6CDBb161f"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          }
+        }
+      }
+    }
+  }
+}
