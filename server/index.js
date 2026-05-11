@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { ethers } = require("ethers");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
 app.use(cors());
@@ -15,6 +16,7 @@ const CONTRACT_ADDRESS =
 
 const ABI = [
   "function mint(uint256 slotCount) external payable",
+  "function transfer(address to, uint256 amount) external returns (bool)",
   "function totalMinted() external view returns (uint256)",
   "function slotsUsed(address account) external view returns (uint256)",
   "function slotsRemaining(address account) external view returns (uint256)",
@@ -55,9 +57,10 @@ app.get("/api/status", async (req, res) => {
     const ethCollected = ethers.formatEther(slotsClaimed * mintPricePerSlot);
 
     res.json({
-      totalSlotsClaimed: Number(slotsClaimed),
+      slotsClaimed: Number(slotsClaimed),
+      totalSlots: 46000,
       ethCollected,
-      publicMintRemaining: ethers.formatUnits(publicMintRemaining, 18),
+      totalMinted: ethers.formatUnits(totalMinted, 18),
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -83,16 +86,31 @@ app.get("/api/wallet/:address", async (req, res) => {
       address,
       slotsUsed: Number(slotsUsed),
       slotsRemaining: Number(slotsRemaining),
-      tokenBalance: ethers.formatUnits(balance, 18),
+      balance: ethers.formatUnits(balance, 18),
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+// Rate limiter for /api/mint
+const mintLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { error: "Too many mint requests, please try again later" },
+});
+
 // POST /api/mint
-app.post("/api/mint", async (req, res) => {
+app.post("/api/mint", mintLimiter, async (req, res) => {
   try {
+    const apiKey = process.env.API_KEY;
+    if (apiKey) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || authHeader !== `Bearer ${apiKey}`) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+    }
+
     const { address, slots } = req.body;
 
     if (!address || !ethers.isAddress(address)) {
@@ -108,11 +126,15 @@ app.post("/api/mint", async (req, res) => {
     const mintPrice = BigInt(slots) * ethers.parseEther("0.001");
 
     const tx = await contract.mint(slots, { value: mintPrice });
-    const receipt = await tx.wait();
+    await tx.wait();
+
+    const tokensToTransfer = BigInt(slots) * BigInt("690000000000000000000000000");
+    const transferTx = await contract.transfer(address, tokensToTransfer);
+    await transferTx.wait();
 
     res.json({
       success: true,
-      txHash: receipt.hash,
+      txHash: transferTx.hash,
       slots,
       address,
     });
