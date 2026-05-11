@@ -181,7 +181,7 @@ export default function Home() {
       <header className={`fixed ${burnerAddress ? 'top-8' : 'top-0'} left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-[#1a1a1a]`}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/hondius-icon.png" alt="hondius" className="w-6 h-6 rounded-full" />
+            <img src="/hondius-icon.png" alt="hondius" className="w-7 h-7 rounded-full" />
             <div className="flex flex-col">
               <span className="font-mono font-bold text-text-primary text-lg">&#9670; hondius</span>
               <span className="font-mono text-xs text-muted hidden sm:block">sign once, chatgpt mints</span>
