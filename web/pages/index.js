@@ -1,22 +1,53 @@
-import { useState, useEffect } from 'react'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
+/* eslint-disable react-hooks/exhaustive-deps */
+import { useState, useEffect, useCallback } from 'react'
+import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import Head from 'next/head'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || ''
+const BASE_CHAIN_ID = 8453
+
+function getAuthHeaders() {
+  return {
+    'Authorization': 'Bearer ' + API_KEY,
+    'Content-Type': 'application/json',
+  }
+}
 
 export default function Home() {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
   const { disconnect } = useDisconnect()
+  const chainId = useChainId()
+  const { switchChain } = useSwitchChain()
+
   const [status, setStatus] = useState(null)
   const [walletData, setWalletData] = useState(null)
   const [copied, setCopied] = useState('')
+  const [lastUpdated, setLastUpdated] = useState(null)
+  const [secondsAgo, setSecondsAgo] = useState(0)
+  const [statusLoading, setStatusLoading] = useState(false)
+  const [balanceLoading, setBalanceLoading] = useState(false)
 
-  useEffect(() => {
-    fetch(`${API_URL}/api/status`)
+  // Burner wallet state
+  const [burnerAddress, setBurnerAddress] = useState(null)
+  const [burnerPrivateKey, setBurnerPrivateKey] = useState(null)
+  const [showBurnerModal, setShowBurnerModal] = useState(false)
+  const [pendingBurnerKey, setPendingBurnerKey] = useState(null)
+  const [pendingBurnerAddr, setPendingBurnerAddr] = useState(null)
+
+  const activeAddress = burnerAddress || (isConnected ? address : null)
+  const isWrongNetwork = isConnected && chainId !== BASE_CHAIN_ID
+
+  const fetchStatus = useCallback(() => {
+    setStatusLoading(true)
+    fetch(`${API_URL}/api/status`, { headers: getAuthHeaders() })
       .then(res => res.json())
-      .then(data => setStatus(data))
+      .then(data => {
+        setStatus(data)
+        setLastUpdated(Date.now())
+      })
       .catch(() => {
         setStatus({
           totalMinted: '12,420,000,000',
@@ -24,26 +55,70 @@ export default function Home() {
           totalSlots: 46000,
           ethCollected: '18.000',
         })
+        setLastUpdated(Date.now())
       })
+      .finally(() => setStatusLoading(false))
   }, [])
 
+  const fetchWalletData = useCallback(() => {
+    if (!activeAddress) return
+    setBalanceLoading(true)
+    fetch(`${API_URL}/api/wallet/${activeAddress}`, { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => setWalletData(data))
+      .catch(() => {
+        setWalletData({ slotsUsed: 0, slotsRemaining: 10, balance: '0' })
+      })
+      .finally(() => setBalanceLoading(false))
+  }, [activeAddress])
+
   useEffect(() => {
-    if (isConnected && address) {
-      fetch(`${API_URL}/api/wallet/${address}`)
-        .then(res => res.json())
-        .then(data => setWalletData(data))
-        .catch(() => {
-          setWalletData({ slotsUsed: 0, slotsRemaining: 10, balance: '0' })
-        })
+    fetchStatus()
+  }, [fetchStatus])
+
+  useEffect(() => {
+    if (activeAddress) {
+      fetchWalletData()
     }
-  }, [isConnected, address])
+  }, [activeAddress, fetchWalletData])
+
+  // Update seconds ago timer
+  useEffect(() => {
+    if (!lastUpdated) return
+    const interval = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastUpdated) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [lastUpdated])
+
+  const generateBurnerWallet = async () => {
+    if (typeof window === 'undefined') return
+    const { ethers } = await import('ethers')
+    const wallet = ethers.Wallet.createRandom()
+    setPendingBurnerKey(wallet.privateKey)
+    setPendingBurnerAddr(wallet.address)
+    setShowBurnerModal(true)
+  }
+
+  const confirmBurnerWallet = () => {
+    setBurnerAddress(pendingBurnerAddr)
+    setBurnerPrivateKey(pendingBurnerKey)
+    setShowBurnerModal(false)
+    setPendingBurnerKey(null)
+    setPendingBurnerAddr(null)
+  }
+
+  const disconnectBurner = () => {
+    setBurnerAddress(null)
+    setBurnerPrivateKey(null)
+    setWalletData(null)
+  }
 
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text)
     setCopied(label)
     setTimeout(() => setCopied(''), 2000)
   }
-
   return (
     <>
       <Head>
@@ -52,12 +127,65 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
+      {/* Burner wallet warning banner */}
+      {burnerAddress && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-[#ff4444] text-white text-center py-2 font-mono text-xs sm:text-sm font-bold">
+          &#9888;&#65039; Burner wallet active - do not refresh!
+        </div>
+      )}
+
+      {/* Burner wallet modal */}
+      {showBurnerModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded p-6 max-w-md w-full font-mono">
+            <p className="text-danger text-lg font-bold mb-4">&#9888;&#65039; SAVE YOUR PRIVATE KEY</p>
+            <p className="text-sm text-text-primary/80 leading-relaxed mb-4">
+              This wallet exists only in your browser.
+              Closing or refreshing this page will
+              permanently delete it. We cannot recover it.
+            </p>
+            <div className="mb-4">
+              <p className="text-xs text-muted mb-1">Private Key:</p>
+              <p className="text-xs text-accent break-all select-all bg-background p-2 rounded border border-muted">
+                {pendingBurnerKey}
+              </p>
+            </div>
+            <div className="mb-4">
+              <p className="text-xs text-muted mb-1">Address:</p>
+              <p className="text-xs text-accent break-all select-all bg-background p-2 rounded border border-muted">
+                {pendingBurnerAddr}
+              </p>
+            </div>
+            <p className="text-xs text-danger mb-4">
+              &#9888;&#65039; Copy and save your private key now. Never share it with anyone.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => copyToClipboard(pendingBurnerKey, 'burner-key')}
+                className="bg-accent text-white font-mono px-4 py-2 rounded text-sm hover:opacity-90 transition-opacity"
+              >
+                {copied === 'burner-key' ? 'Copied!' : 'Copy Private Key'}
+              </button>
+              <button
+                onClick={confirmBurnerWallet}
+                className="bg-chatgpt text-white font-mono px-4 py-2 rounded text-sm hover:opacity-90 transition-opacity"
+              >
+                I saved it, continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-[#1a1a1a]">
+      <header className={`fixed ${burnerAddress ? 'top-8' : 'top-0'} left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-[#1a1a1a]`}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="font-mono font-bold text-text-primary text-lg">&#9670; hondius</span>
-            <span className="font-mono text-xs text-muted hidden sm:block">sign once, chatgpt mints</span>
+          <div className="flex items-center gap-2">
+            <img src="/hondius-icon.png" alt="hondius" className="w-6 h-6 rounded-full" />
+            <div className="flex flex-col">
+              <span className="font-mono font-bold text-text-primary text-lg">&#9670; hondius</span>
+              <span className="font-mono text-xs text-muted hidden sm:block">sign once, chatgpt mints</span>
+            </div>
           </div>
           <nav className="hidden md:flex items-center gap-6 font-mono text-sm text-text-primary/70">
             <a href="#why" className="hover:text-text-primary transition-colors">why</a>
@@ -72,9 +200,14 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="font-mono pt-20">
+      <main className={`font-mono ${burnerAddress ? 'pt-28' : 'pt-20'}`}>
         {/* HERO */}
         <section className="max-w-6xl mx-auto px-4 py-20 sm:py-32">
+          {/* Mascot image */}
+          <div className="flex justify-center mb-8">
+            <img src="/hondius-icon.png" alt="HONDIUS mascot" className="w-[120px] h-[120px] rounded-full border-2 border-muted" />
+          </div>
+
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-text-primary leading-tight">
             mint $HONDIUS<br />via chatgpt.
           </h1>
@@ -97,7 +230,7 @@ export default function Home() {
           {/* Buttons */}
           <div className="flex flex-wrap gap-4 mt-8">
             <a
-              href="https://chatgpt.com/g/hondius"
+              href="https://chatgpt.com/g/g-6a0181535a7881919dbbea01c63f9dd7-hondius-minter"
               target="_blank"
               rel="noopener noreferrer"
               className="bg-chatgpt text-white font-mono font-medium px-6 py-3 rounded hover:opacity-90 transition-opacity"
@@ -115,22 +248,15 @@ export default function Home() {
           {/* CSS Ship Silhouette */}
           <div className="ship-drift mt-16 flex justify-center">
             <div className="relative w-64 h-32 opacity-20">
-              {/* Hull */}
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-8 bg-text-primary/30 rounded-b-full" style={{ clipPath: 'polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%)' }}></div>
-              {/* Deck */}
               <div className="absolute bottom-7 left-1/2 -translate-x-1/2 w-40 h-3 bg-text-primary/20"></div>
-              {/* Mast */}
               <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-[2px] h-20 bg-text-primary/40"></div>
-              {/* Sail */}
               <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-16 h-14 bg-text-primary/10 border-l border-text-primary/20" style={{ clipPath: 'polygon(0% 0%, 100% 20%, 100% 80%, 0% 100%)' }}></div>
-              {/* Crow's nest */}
               <div className="absolute top-1 left-1/2 -translate-x-1/2 w-4 h-2 bg-text-primary/30"></div>
-              {/* Fog effect */}
               <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent"></div>
             </div>
           </div>
         </section>
-
         {/* 01 WHY */}
         <section id="why" className="max-w-6xl mx-auto px-4 py-16 sm:py-24">
           <p className="text-sm text-muted mb-2">// 01 why this exists</p>
@@ -209,7 +335,7 @@ export default function Home() {
 
           <div className="flex justify-center mb-10">
             <a
-              href="https://chatgpt.com/g/hondius"
+              href="https://chatgpt.com/g/g-6a0181535a7881919dbbea01c63f9dd7-hondius-minter"
               target="_blank"
               rel="noopener noreferrer"
               className="bg-chatgpt text-white font-mono font-medium px-8 py-4 rounded text-lg hover:opacity-90 transition-opacity"
@@ -236,11 +362,19 @@ export default function Home() {
             </pre>
           </div>
         </section>
-
         {/* 04 LIVE STATUS */}
         <section id="status" className="max-w-6xl mx-auto px-4 py-16 sm:py-24">
           <p className="text-sm text-muted mb-2">// 04 live state</p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-text-primary mb-10">mint progress</h2>
+          <div className="flex items-center gap-3 mb-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-text-primary">mint progress</h2>
+            <button
+              onClick={fetchStatus}
+              disabled={statusLoading}
+              className="text-xs text-accent border border-accent px-2 py-1 rounded hover:bg-accent/10 transition-colors disabled:opacity-50"
+            >
+              {statusLoading ? <span className="spinner inline-block w-3 h-3 border border-accent border-t-transparent rounded-full"></span> : 'Refresh'}
+            </button>
+          </div>
 
           {/* Progress bar */}
           <div className="max-w-xl">
@@ -257,30 +391,78 @@ export default function Home() {
             <p className="text-sm text-text-primary/50 mt-2">
               ETH collected: {status ? status.ethCollected : '...'} ETH
             </p>
+            {lastUpdated && (
+              <p className="text-xs text-muted mt-1">Updated {secondsAgo} seconds ago</p>
+            )}
           </div>
 
           {/* Wallet connection */}
           <div className="mt-10 border border-[#1a1a1a] bg-[#0f0f0f] rounded p-6 max-w-xl">
-            {!isConnected ? (
-              <button
-                onClick={() => connect({ connector: injected() })}
-                className="bg-accent text-white font-mono px-6 py-3 rounded hover:opacity-90 transition-opacity"
-              >
-                connect wallet
-              </button>
+            {!activeAddress ? (
+              <div className="space-y-3">
+                {isWrongNetwork ? (
+                  <button
+                    onClick={() => switchChain({ chainId: BASE_CHAIN_ID })}
+                    className="bg-danger text-white font-mono px-6 py-3 rounded hover:opacity-90 transition-opacity"
+                  >
+                    Switch to Base
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => connect({ connector: injected() })}
+                    className="bg-accent text-white font-mono px-6 py-3 rounded hover:opacity-90 transition-opacity"
+                  >
+                    connect wallet
+                  </button>
+                )}
+                <div className="border-t border-muted pt-3">
+                  <button
+                    onClick={generateBurnerWallet}
+                    className="text-sm text-text-primary/70 font-mono hover:text-accent transition-colors"
+                  >
+                    &#9889; Generate Burner Wallet
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-sm text-text-primary/70">
-                  connected: <span className="text-accent">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
-                </p>
-                <p className="text-sm text-text-primary/70">
-                  your slots: {walletData ? `${walletData.slotsUsed}/10` : '...'}
-                </p>
-                <p className="text-sm text-text-primary/70">
-                  your balance: {walletData ? walletData.balance : '...'} $HONDIUS
-                </p>
+                {isWrongNetwork && !burnerAddress && (
+                  <div className="mb-3">
+                    <button
+                      onClick={() => switchChain({ chainId: BASE_CHAIN_ID })}
+                      className="bg-danger text-white font-mono px-4 py-2 rounded text-sm hover:opacity-90 transition-opacity"
+                    >
+                      Switch to Base
+                    </button>
+                    <p className="text-xs text-danger mt-1">Wrong network detected</p>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-text-primary/70">
+                    connected: <span className="text-accent">{activeAddress?.slice(0, 6)}...{activeAddress?.slice(-4)}</span>
+                  </p>
+                  {burnerAddress && <span className="text-xs text-danger">(burner)</span>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-text-primary/70">
+                    your slots: {walletData ? `${walletData.slotsUsed}/10` : '...'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-text-primary/70">
+                    your balance: {walletData ? walletData.balance : '...'} $HONDIUS
+                  </p>
+                  <button
+                    onClick={fetchWalletData}
+                    disabled={balanceLoading}
+                    className="text-xs text-accent hover:opacity-70 transition-opacity disabled:opacity-50"
+                    title="Refresh balance"
+                  >
+                    {balanceLoading ? <span className="spinner inline-block w-3 h-3 border border-accent border-t-transparent rounded-full"></span> : '\u21BB'}
+                  </button>
+                </div>
                 <button
-                  onClick={() => disconnect()}
+                  onClick={() => { burnerAddress ? disconnectBurner() : disconnect() }}
                   className="text-xs text-danger hover:underline mt-2"
                 >
                   disconnect
@@ -289,11 +471,16 @@ export default function Home() {
             )}
           </div>
         </section>
-
         {/* 05 TOKENOMICS */}
         <section id="tokenomics" className="max-w-6xl mx-auto px-4 py-16 sm:py-24">
           <p className="text-sm text-muted mb-2">// 05 tokenomics</p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-text-primary mb-10">fair launch. no bullshit.</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-text-primary mb-10">
+            <span className="inline-flex items-center gap-2">
+              <img src="/hondius-icon.png" alt="" className="w-4 h-4 rounded-full inline" />
+              $HONDIUS
+            </span>{' '}
+            fair launch. no bullshit.
+          </h2>
 
           <pre className="text-xs sm:text-sm text-text-primary/80 overflow-x-auto leading-relaxed">
 {`public mint  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 46%  31.74B
@@ -393,7 +580,7 @@ all checks passed. contract is trustless.`}
 
             <div className="flex flex-wrap gap-6 text-sm text-text-primary/60 mb-8">
               <a href="https://basescan.org/address/0x66Bfb8934858F23af2D630cC96bbB7F94eeA1035" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">basescan</a>
-              <a href="https://chatgpt.com/g/hondius" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">chatgpt</a>
+              <a href="https://chatgpt.com/g/g-6a0181535a7881919dbbea01c63f9dd7-hondius-minter" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">chatgpt</a>
               <a href="#" className="hover:text-text-primary transition-colors">x.com</a>
               <a href="#" className="hover:text-text-primary transition-colors">telegram</a>
             </div>
