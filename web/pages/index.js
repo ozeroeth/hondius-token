@@ -508,15 +508,15 @@ total supply                     100%    69B`}
             <div className="border border-[#1a1a1a] bg-[#0f0f0f] rounded p-4 sm:p-6">
               <p className="text-xs text-muted mb-1">$HONDIUS token</p>
               <div className="flex flex-wrap items-center gap-3">
-                <code className="text-xs sm:text-sm text-accent break-all">0x66Bfb8934858F23af2D630cC96bbB7F94eeA1035</code>
+                <code className="text-xs sm:text-sm text-accent break-all">0x40Ee80C0888505F70497DeAcE456c5999B57837f</code>
                 <button
-                  onClick={() => copyToClipboard('0x66Bfb8934858F23af2D630cC96bbB7F94eeA1035', 'token')}
+                  onClick={() => copyToClipboard('0x40Ee80C0888505F70497DeAcE456c5999B57837f', 'token')}
                   className="text-xs text-text-primary/50 hover:text-text-primary border border-muted px-2 py-1 rounded transition-colors"
                 >
                   {copied === 'token' ? 'copied' : 'copy'}
                 </button>
                 <a
-                  href="https://basescan.org/address/0x66Bfb8934858F23af2D630cC96bbB7F94eeA1035"
+                  href="https://basescan.org/address/0x40Ee80C0888505F70497DeAcE456c5999B57837f"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-accent hover:underline"
@@ -579,7 +579,7 @@ all checks passed. contract is trustless.`}
             <p className="text-sm text-text-primary/50 mb-6">much ship. very outbreak. wow.</p>
 
             <div className="flex flex-wrap gap-6 text-sm text-text-primary/60 mb-8">
-              <a href="https://basescan.org/address/0x66Bfb8934858F23af2D630cC96bbB7F94eeA1035" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">basescan</a>
+              <a href="https://basescan.org/address/0x40Ee80C0888505F70497DeAcE456c5999B57837f" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">basescan</a>
               <a href="https://chatgpt.com/g/g-6a0181535a7881919dbbea01c63f9dd7-hondius-minter" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">chatgpt</a>
               <a href="#" className="hover:text-text-primary transition-colors">x.com</a>
               <a href="#" className="hover:text-text-primary transition-colors">telegram</a>

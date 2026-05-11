@@ -12,10 +12,11 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const CONTRACT_ADDRESS =
   process.env.CONTRACT_ADDRESS ||
-  "0x66Bfb8934858F23af2D630cC96bbB7F94eeA1035";
+  "0x40Ee80C0888505F70497DeAcE456c5999B57837f";
 
 const ABI = [
   "function mint(uint256 slotCount) external payable",
+  "function mintFor(address recipient, uint256 slotCount) external payable",
   "function transfer(address to, uint256 amount) external returns (bool)",
   "function totalMinted() external view returns (uint256)",
   "function slotsUsed(address account) external view returns (uint256)",
@@ -36,7 +37,7 @@ function getContract() {
 
 function getRelayerWallet() {
   const provider = getProvider();
-  return new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY, provider);
+  return new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 }
 
 // GET /api/health
@@ -117,16 +118,12 @@ app.post("/api/mint", mintLimiter, async (req, res) => {
 
     const mintPrice = BigInt(slots) * ethers.parseEther("0.001");
 
-    const tx = await contract.mint(slots, { value: mintPrice });
+    const tx = await contract.mintFor(address, slots, { value: mintPrice });
     await tx.wait();
-
-    const tokensToTransfer = BigInt(slots) * BigInt("690000000000000000000000000");
-    const transferTx = await contract.transfer(address, tokensToTransfer);
-    await transferTx.wait();
 
     res.json({
       success: true,
-      txHash: transferTx.hash,
+      txHash: tx.hash,
       slots,
       address,
     });

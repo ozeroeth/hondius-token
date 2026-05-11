@@ -4,11 +4,11 @@ HONDIUS is a memecoin on Base that you mint by talking to ChatGPT. The relayer A
 
 ## Contract Info
 
-- **Address:** `0x66Bfb8934858F23af2D630cC96bbB7F94eeA1035`
+- **Address:** `0x40Ee80C0888505F70497DeAcE456c5999B57837f`
 - **Network:** Base (Chain ID 8453)
-- **Basescan:** [View on Basescan](https://basescan.org/address/0x66Bfb8934858F23af2D630cC96bbB7F94eeA1035)
+- **Basescan:** [View on Basescan](https://basescan.org/address/0x40Ee80C0888505F70497DeAcE456c5999B57837f)
 
-> **NOTE:** Contract is already deployed. Do NOT redeploy.
+> **NOTE:** Contract redeployed with `mintFor` support. New address above.
 
 ## Architecture
 
@@ -81,7 +81,7 @@ npm run dev
 | `CONTRACT_ADDRESS` | Deployed token address |
 | `BASE_RPC_URL` | Base RPC endpoint |
 | `RELAYER_WALLET` | Relayer wallet address |
-| `RELAYER_PRIVATE_KEY` | Relayer wallet private key (for signing mint txs) |
+| `PRIVATE_KEY` | Relayer wallet private key (for signing mint txs) |
 | `BASESCAN_API_KEY` | For contract verification |
 | `PORT` | API port (default 3000) |
 
@@ -100,4 +100,4 @@ Push `web/` to Vercel. Set `NEXT_PUBLIC_API_URL` env var.
 
 ## Important
 
-The contract is already deployed on Base mainnet. Do not redeploy.
+The contract has been redeployed on Base mainnet with `mintFor` support.
