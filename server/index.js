@@ -103,14 +103,6 @@ const mintLimiter = rateLimit({
 // POST /api/mint
 app.post("/api/mint", mintLimiter, async (req, res) => {
   try {
-    const apiKey = process.env.API_KEY;
-    if (apiKey) {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || authHeader !== `Bearer ${apiKey}`) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-    }
-
     const { address, slots } = req.body;
 
     if (!address || !ethers.isAddress(address)) {
