@@ -4,7 +4,7 @@ import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } fro
 import { injected } from 'wagmi/connectors'
 import Head from 'next/head'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://hondius-token-production.up.railway.app'
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || ''
 const BASE_CHAIN_ID = 8453
 
