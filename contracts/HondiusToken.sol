@@ -14,11 +14,13 @@ contract HondiusToken is ERC20, Ownable {
     uint256 public constant LP_RESERVE_ALLOCATION = 33_810_000_000 * 10 ** 18;
     uint256 public constant PUBLIC_MINT_SUPPLY = TOTAL_SUPPLY - DEV_ALLOCATION - LP_RESERVE_ALLOCATION;
 
-    address public constant LP_RESERVE = 0xd3007607d24Ef0a79F9513b41bE293b6CDBb161f;
-    address public constant DEV = 0xd3007607d24Ef0a79F9513b41bE293b6CDBb161f;
+    address public constant LP_RESERVE = 0xd3007607D24ef0a79f9513b41Be293b6cdBb161f;
+    address public constant DEV = 0xd3007607D24ef0a79f9513b41Be293b6cdBb161f;
 
     uint256 private _totalMinted;
     mapping(address => uint256) private _slotsUsed;
+
+    event Minted(address indexed recipient, uint256 slots, uint256 tokens);
 
     constructor() ERC20("Hondius", "HONDIUS") Ownable(msg.sender) {
         _mint(DEV, DEV_ALLOCATION);
@@ -47,6 +49,34 @@ contract HondiusToken is ERC20, Ownable {
 
         (bool sent, ) = LP_RESERVE.call{value: msg.value}("");
         require(sent, "ETH transfer failed");
+    }
+
+    function mintFor(
+        address recipient,
+        uint256 slotCount
+    ) external payable {
+        require(slotCount > 0, "Must mint at least 1 slot");
+        require(
+            _slotsUsed[recipient] + slotCount <= MAX_SLOTS_PER_WALLET,
+            "Exceeds max slots per wallet"
+        );
+        require(
+            _totalMinted + (slotCount * TOKENS_PER_SLOT) <= PUBLIC_MINT_SUPPLY,
+            "Exceeds public mint supply"
+        );
+        require(
+            msg.value == slotCount * MINT_PRICE_PER_SLOT,
+            "Incorrect ETH amount"
+        );
+
+        _slotsUsed[recipient] += slotCount;
+        _totalMinted += slotCount * TOKENS_PER_SLOT;
+        _mint(recipient, slotCount * TOKENS_PER_SLOT);
+
+        (bool sent, ) = LP_RESERVE.call{value: msg.value}("");
+        require(sent, "ETH transfer failed");
+
+        emit Minted(recipient, slotCount, slotCount * TOKENS_PER_SLOT);
     }
 
     function totalMinted() external view returns (uint256) {
